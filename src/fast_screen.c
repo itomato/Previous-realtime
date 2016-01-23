@@ -4,13 +4,14 @@
   This file is distributed under the GNU Public License, version 2 or at your
   option any later version. Read the file gpl.txt for details.
 
- (SC) Simon Schubiger - most of it rewritten for Previous NeXT emualtor
+ (SC) Simon Schubiger - most of it rewritten for Previous NeXT emulator
 */
 
 #include <SDL.h>
 #include <SDL_endian.h>
 #include <SDL_blendmode.h>
 
+/* (SC) set this to 1 in order to use old screen redraw code */
 #if 0
 void blitDimension(SDL_Texture* tex) {}
 #include "screen.c"
@@ -35,18 +36,18 @@ SDL_Window*  sdlWindow;
 SDL_Surface* sdlscrn = NULL;   /* The SDL screen surface */
 int nScreenZoomX, nScreenZoomY;/* Zooming factors, used for scaling mouse motions */
 
-/* extern for shortcuts and falcon/hostscreen.c */
-volatile bool bGrabMouse    = false;      /* Grab the mouse cursor in the window */
-volatile bool bInFullScreen = false;   /* true if in full screen */
+/* extern for shortcuts */
+volatile bool bGrabMouse    = false; /* Grab the mouse cursor in the window */
+volatile bool bInFullScreen = false; /* true if in full screen */
 
 static SDL_Thread*   repaintThread;
 static SDL_sem*      initLatch;
-static SDL_atomic_t  blitUI;           /* When value = 1, the repaint thread will blit the sldscrn surface to the screen on the next redraw */
-static SDL_atomic_t  blitStatusBar;    /* When value = 1, the repaint thread will blit the sldscrn status bar on the next redraw */
+static SDL_atomic_t  blitUI;           /* When value == 1, the repaint thread will blit the sldscrn surface to the screen on the next redraw */
+static SDL_atomic_t  blitStatusBar;    /* When value == 1, the repaint thread will blit the sldscrn status bar on the next redraw */
 static bool          doUIblit;
 static SDL_Rect      saveWindowBounds; /* Window bounds before going fullscreen. Used to restore window size & position. */
 static void*         uiBuffer;         /* uiBuffer used for ui texture */
-static SDL_SpinLock  uiBufferLock;     /* Lock for concurrent access to UI buffer between main thread and repainter */
+static SDL_SpinLock  uiBufferLock;     /* Lock for concurrent access to UI buffer between m68k thread and repainter */
 static Uint32        mask;             /* green screen mask for transparent UI areas */
 static volatile bool doRepaint  = true; /* Repaint thread runs while true */
 
@@ -113,7 +114,7 @@ static void blitColor(SDL_Texture* tex) {
 extern 
 
 /*
- Dimension format is 8bit per pixel, big-endian: RRGGGBBBA
+ Dimension format is 8bit per pixel, big-endian: RRGGBBAA
  */
 void blitDimension(SDL_Texture* tex) {
 #if ENABLE_DIMENSION
@@ -125,7 +126,7 @@ void blitDimension(SDL_Texture* tex) {
     SDL_LockTexture(tex, NULL, &pixels, &d);
     Uint32* dst = (Uint32*)pixels;
     if(SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-        /* Add big-endian accelerated blit loops as needed */
+        /* Add big-endian accelerated blit loops as needed here */
         switch (format) {
             default: {
                 /* fallback to SDL_MapRGB */
@@ -142,7 +143,7 @@ void blitDimension(SDL_Texture* tex) {
             }
         }
     } else {
-        /* Add little-endian accelerated blit loops as needed */
+        /* Add little-endian accelerated blit loops as needed here */
         switch (format) {
             case SDL_PIXELFORMAT_ARGB8888:
                 for(int y = 832; --y >= 0;) {
@@ -192,8 +193,8 @@ static void blitScreen(SDL_Texture* tex) {
 }
 
 /*
- Initializes sdl graphics and the enter repaint loop.
- Loop: blits the NeXT framebuffer to the fbTexture, blends with the GUI surface and
+ Initializes SDL graphics and then enters repaint loop.
+ Loop: Blits the NeXT framebuffer to the fbTexture, blends with the GUI surface and
  shows it.
  */
 static int repainter(void* unused) {
@@ -282,6 +283,7 @@ static int repainter(void* unused) {
             SDL_UpdateTexture(uiTexture, NULL, uiBuffer, sdlscrn->pitch);
             SDL_AtomicUnlock(&uiBufferLock);
         } else if(SDL_AtomicSet(&blitStatusBar, 0)) {
+            // update only status bar (optimization)
             SDL_LockSurface(sdlscrn);
             SDL_UpdateTexture(uiTexture, &statusBar, &((Uint8*)sdlscrn->pixels)[statusBar.y*sdlscrn->pitch], sdlscrn->pitch);
             SDL_UnlockSurface(sdlscrn);
@@ -297,7 +299,7 @@ static int repainter(void* unused) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Init Screen, creates window and starts repatin thread
+ * Init Screen, creates window and starts repaint thread
  */
 void Screen_Init(void) {
     /* Set initial window resolution */
@@ -309,7 +311,7 @@ void Screen_Init(void) {
     int height = 832;
     int sBarHeight, bitCount, maxW, maxH;
     
-    /* Statusbar height for doubled screen size */
+    /* Statusbar height */
     sBarHeight = Statusbar_GetHeightForSize(1120, 832);
     Resolution_GetLimits(&maxW, &maxH, &bitCount);
     height += Statusbar_SetHeight(width, height);
@@ -418,7 +420,7 @@ void Screen_ReturnFromFullScreen(void) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Force things associated with changing between low/medium/high res.
+ * Force things associated with changing between fullscreen/windowed
  */
 void Screen_ModeChanged(void) {
 	if (!sdlscrn) {
@@ -436,7 +438,7 @@ void Screen_ModeChanged(void) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Draw screen to window/full-screen - (SC) empty. Screen re-draw is done in repaint thread.
+ * Draw screen to window/full-screen - (SC) Just status bar updates. Screen redraw is done in repaint thread.
  */
 bool Screen_Draw(void) {
     
@@ -446,6 +448,10 @@ bool Screen_Draw(void) {
     return !bQuitProgram;
 }
 
+/*
+ Copy UI SDL surface to uiBuffer and replace mask pixels with transparent pixels for
+ UI blending with framebuffer texture.
+*/
 static void uiUpdate() {
     SDL_LockSurface(sdlscrn);
     int     count = sdlscrn->w * sdlscrn->h;

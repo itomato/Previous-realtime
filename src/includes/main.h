@@ -66,7 +66,6 @@ extern bool Main_PauseEmulation(bool visualize);
 extern bool Main_UnPauseEmulation(void);
 extern void Main_RequestQuit(void);
 extern void Main_SetRunVBLs(Uint32 vbls);
-extern void Main_WaitOnVbl(void);
 extern void Main_WarpMouse(int x, int y);
 extern void Main_EventHandler(void);
 extern void Main_SetTitle(const char *title);

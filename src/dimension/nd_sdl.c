@@ -3,17 +3,14 @@
 #include "configuration.h"
 #include "dimension.h"
 #include "screen.h"
+#include "host.h"
 
 /* Because of SDL time (in)accuracy, timing is very approximative */
 const int DISPLAY_VBL_MS = 1000 / 68; // main display at 68Hz, actually this is 71.42 Hz because (int)1000/(int)68Hz=14ms
 const int VIDEO_VBL_MS   = 1000 / 60; // NTSC display at 60Hz, actually this is 62.5 Hz because (int)1000/(int)60Hz=16ms
 const int BLANK_MS       = 2;         // Give some blank time for both
 
-extern Uint32      nd_display_blank_start();
-extern Uint32      nd_display_blank_end();
-extern Uint32      nd_video_vbl(Uint32 interval, void* param);
-
-static SDL_TimerID   videoVBL      = NULL;
+static SDL_TimerID   videoVBL      = 0;
 static volatile bool doRepaint     = true;
 static SDL_Thread*   repaintThread = NULL;
 static SDL_Window*   ndWindow      = NULL;
@@ -43,9 +40,9 @@ static int repainter(void* unused) {
         }
         // if this is a cube, then do ND blank emulation.
         if(ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040) {
-            nd_display_blank_start();
+            host_nd_blank(ND_SLOT, ND_DISPLAY, true);
             SDL_Delay(BLANK_MS);
-            nd_display_blank_end();
+            host_nd_blank(ND_SLOT, ND_DISPLAY, false);
         }
     }
 
@@ -54,6 +51,14 @@ static int repainter(void* unused) {
     SDL_DestroyWindow(ndWindow);
 
     return 0;
+}
+
+bool nd_video_toggle;
+
+Uint32 nd_video_vbl(Uint32 interval, void *param) {
+    host_nd_blank(ND_SLOT, ND_VIDEO, nd_video_toggle);
+    nd_video_toggle = !nd_video_toggle;
+    return interval;
 }
 
 void nd_sdl_init() {
@@ -66,7 +71,7 @@ void nd_sdl_init() {
     }
     if(videoVBL) SDL_RemoveTimer(videoVBL);
     // NTSC video at 60Hz
-    videoVBL   = SDL_AddTimer(VIDEO_VBL_MS, nd_video_vbl, NULL);
+    videoVBL = SDL_AddTimer(VIDEO_VBL_MS/2, nd_video_vbl, NULL);
     
     if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
         SDL_ShowWindow(ndWindow);

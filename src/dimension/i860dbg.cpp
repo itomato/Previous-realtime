@@ -138,7 +138,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
             case 'm':
                 if (buf[1] == '0')
                     sscanf (buf + 1, "%x", &curr_dumpdb);
-                dbg_db (curr_dumpdb, 32);
+                dbg_memdump (curr_dumpdb, 32);
                 curr_dumpdb += 32;
                 break;
             case 't': {
@@ -217,18 +217,15 @@ UINT32 i860_cpu_device::disasm (UINT32 addr, int len)
 
 
 /* Dump `len' bytes starting at `addr'.  */
-void i860_cpu_device::dbg_db (UINT32 addr, int len)
-{
+void i860_cpu_device::dbg_memdump (UINT32 addr, int len) {
 	UINT8 b[16];
 	int i;
 	/* This will always dump a multiple of 16 bytes, even if 'len' isn't.  */
-	while (len > 0)
-	{
+	while (len > 0) {
 		/* Note that we print the incoming (possibly virtual) address
 		   rather than the translated address.  */
 		fprintf (stderr, "0x%08x: ", addr);
-		for (i = 0; i < 16; i++)
-		{
+		for (i = 0; i < 16; i++) {
 			UINT32 phys_addr = addr;
 			if (GET_DIRBASE_ATE ())
 				phys_addr = get_address_translation (addr, 1  /* is_dataref */, 0 /* is_write */);
@@ -238,8 +235,7 @@ void i860_cpu_device::dbg_db (UINT32 addr, int len)
 			addr++;
 		}
 		fprintf (stderr, "| ");
-		for (i = 0; i < 16; i++)
-		{
+		for (i = 0; i < 16; i++) {
 			if (isprint (b[i]))
 				fprintf (stderr, "%c", b[i]);
 			else

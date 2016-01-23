@@ -11,6 +11,8 @@
 #include "nd_nbic.h"
 #include "i860cfg.h"
 #include "nd_sdl.h"
+#include "ramdac.h"
+#include "host.h"
 
 #if ENABLE_DIMENSION
 
@@ -85,7 +87,6 @@ struct {
     uae_u32 vram;
     uae_u32 dram;
 } nd_mc;
-static lock_t nd_mc_lock;
 
 #define DP_IIC_MORE 0x20000000
 #define DP_IIC_BUSY 0x80000000
@@ -107,38 +108,18 @@ static struct {
     uae_u32 iic_data;
 } nd_dp;
 
-/* nd_display_blank_start is called from SDL. See nd_sdl.c */
-void nd_display_blank_start() {
-    lock(&nd_mc_lock);
-    Uint32 csr0 = nd_mc.csr0;
-    csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
-    nd_mc.csr0 = csr0;
-    unlock(&nd_mc_lock);
-    i860_tick((csr0 & CSR0_VBL_IMASK) != 0);
-}
-
-/* nd_display_blank_start is called from SDL. See nd_sdl.c */
-void nd_display_blank_end() {
-    lock(&nd_mc_lock);
-    nd_mc.csr0 &= ~CSR0_VBLANK;
-    unlock(&nd_mc_lock);
-}
-
-/* nd_video_vbl is called from SDL. See nd_sdl.c */
-Uint32 nd_video_vbl(Uint32 interval, void *param) {
-    lock(&nd_mc_lock);
-    Uint32 csr0 = nd_mc.csr0;
-    if(csr0 & CSR0_VIOBLANK) {
-        csr0 &= ~CSR0_VIOBLANK;
-        interval = VIDEO_VBL_MS-BLANK_MS;
-    } else {
-        csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
-        interval = BLANK_MS;
+void nd_set_blank_state(int src, bool state) {
+    switch (src) {
+        case ND_DISPLAY:
+            if(state)   nd_mc.csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
+            else        nd_mc.csr0 &= ~CSR0_VBLANK;
+            break;
+        case ND_VIDEO:
+            if(state)   nd_mc.csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
+            else        nd_mc.csr0 &= ~CSR0_VIOBLANK;
+            break;
     }
-    nd_mc.csr0 = csr0;
-    unlock(&nd_mc_lock);
-    i860_tick((csr0 & CSR0_VIOVBL_IMASK) != 0);
-    return interval;
+    i860_tick((nd_mc.csr0 & (CSR0_VBL_IMASK | CSR0_VIOVBL_IMASK)) != 0);
 }
 
 void nd_devs_init() {
@@ -348,7 +329,6 @@ static const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08
 static const char* MC_WR_FORMAT_S = "[ND] Memory controller %s write (%s) at %08X";
 
 void nd_mc_write_register(uaecptr addr, uae_u32 val) {
-    lock(&nd_mc_lock);
     switch (addr&0x3FFF) {
         case 0x0000:
             Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr0", decodeBits(ND_CSR0_BITS, val), addr);
@@ -458,7 +438,6 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
             Log_Printf(LOG_WARN, "[ND] Memory controller UNKNOWN write at %08X",addr);
             break;
 	}
-    unlock(&nd_mc_lock);
 }
 
 /* NeXTdimension device space */
@@ -488,62 +467,14 @@ inline void nd_io_bput(uaecptr addr, uae_u32 b) {
 
 /* NeXTdimension RAMDAC */
 
-static struct {
-    int   addr;
-    int   idx;
-    Uint8 regs[0x1000];
-} nd_ramdac;
-
-static void nd_ramdac_autoinc() {
-    nd_ramdac.idx++;
-    if(nd_ramdac.idx == 3) {
-        nd_ramdac.idx = 0;
-        nd_ramdac.addr++;
-    }
-}
+bt463 nd_ramdac;
 
 inline uae_u32 nd_ramdac_bget(uaecptr addr) {
-    uae_u32 result = 0;
-    switch(addr & 0xF) {
-        case 0:
-            return nd_ramdac.addr & 0xFF;
-        case 0x4:
-            return (nd_ramdac.addr >> 8) & 0xFF;
-        case 0x8:
-            result = nd_ramdac.regs[nd_ramdac.addr*3];
-            if(nd_ramdac.addr == 0x100 || nd_ramdac.addr == 0x101)
-                nd_ramdac_autoinc();
-            break;
-        case 0xC:
-            result = nd_ramdac.regs[nd_ramdac.addr*3+nd_ramdac.idx];
-            nd_ramdac_autoinc();
-            break;
-    }
-    return result;
+    return bt463_bget(&nd_ramdac, addr);
 }
 
 inline void nd_ramdac_bput(uaecptr addr, uae_u32 b) {
-    switch(addr & 0xF) {
-        case 0x0:
-            nd_ramdac.addr &= 0xFF00;
-            nd_ramdac.addr |= b & 0xFF;
-            nd_ramdac.idx = 0;
-            break;
-        case 0x4:
-            nd_ramdac.addr &= 0x000F;
-            nd_ramdac.addr |= (b & 0x0F) << 8;
-            nd_ramdac.idx = 0;
-            break;
-        case 0x8:
-            nd_ramdac.regs[nd_ramdac.addr*3] = b;
-            if(nd_ramdac.addr == 0x100 || nd_ramdac.addr == 0x101)
-                nd_ramdac_autoinc();
-            break;
-        case 0xC:
-            nd_ramdac.regs[nd_ramdac.addr*3+nd_ramdac.idx] = b;
-            nd_ramdac_autoinc();
-            break;
-    }
+    bt463_bput(&nd_ramdac, addr, b);
 }
 
 /* NeXTdimension data path */

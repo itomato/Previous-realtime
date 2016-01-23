@@ -17,7 +17,7 @@
 #define CONF_STR(CONF) #CONF
 
 /* Change this to select your emulator configuration */
-#define CONF_I860 CONF_I860_SPEED
+#define CONF_I860 CONF_I860_DEV
 
 /* Emulator configurations */
 

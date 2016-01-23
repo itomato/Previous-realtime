@@ -24,8 +24,6 @@ const char Configuration_fileid[] = "Hatari configuration.c : " __DATE__ " " __T
 #include "screen.h"
 #include "video.h"
 #include "avi_record.h"
-#include "clocks_timings.h"
-
 
 CNF_PARAMS ConfigureParams;                 /* List of configuration for the emulator */
 char sConfigFileName[FILENAME_MAX];         /* Stores the name of the configuration file */
@@ -599,9 +597,6 @@ void Configuration_Apply(bool bReset)
 	{
 		/* Set resolution change */
 	}
-
-    /* Init clocks for this machine */
-    ClocksTimings_InitMachine ( ConfigureParams.System.nMachineType );
     
     /* Mouse settings */
     Configuration_CheckFloatMinMax(&ConfigureParams.Mouse.fLinSpeedNormal,MOUSE_LIN_MIN,MOUSE_LIN_MAX);

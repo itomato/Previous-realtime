@@ -26,7 +26,6 @@ const char ShortCut_fileid[] = "Hatari shortcut.c : " __DATE__ " " __TIME__;
 #include "video.h"
 #include "snd.h"
 #include "statusbar.h"
-#include "clocks_timings.h"
 
 static SHORTCUTKEYIDX ShortCutKey = SHORTCUT_NONE;  /* current shortcut key */
 

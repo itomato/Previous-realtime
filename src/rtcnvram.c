@@ -392,7 +392,7 @@ void my_set_rtc_time(int which,int val) {
 	
 	if (tmp2!=0) {
 		time_offset=tmp-tmp2;
-		Log_Printf(LOG_WARN,"Offset is %d",time_offset);
+		Log_Printf(LOG_WARN,"Offset is %ld",time_offset);
 	}     
 }
 

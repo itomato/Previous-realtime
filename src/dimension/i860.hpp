@@ -30,6 +30,8 @@
 #include "nd_sdl.h"
 
 const int LOG_WARN = 3;
+const int ND_SLOT  = 2; // HACK: one day we should put the whole ND in a C++ class or make an array of NeXTbus slots
+
 extern "C" void Log_Printf(int nType, const char *psFormat, ...);
 
 typedef uint64_t UINT64;
@@ -83,6 +85,8 @@ extern "C" {
     void   nd_nbic_interrupt(void);
     bool   nd_dbg_cmd(const char* cmd);
     void   Statusbar_SetNdLed(int state);
+    
+    void   nd_set_blank_state(int src, bool state);
 }
 
 typedef void (*mem_rd_func)(UINT32, UINT32*);
@@ -122,11 +126,13 @@ enum {
 };
 
 enum {
-    MSG_NONE          = 0x00,
-    MSG_I860_RESET    = 0x01,
-    MSG_I860_KILL     = 0x02,
-    MSG_DBG_BREAK     = 0x04,
-    MSG_INTR          = 0x08,
+    MSG_NONE           = 0x00,
+    MSG_I860_RESET     = 0x01,
+    MSG_I860_KILL      = 0x02,
+    MSG_DBG_BREAK      = 0x04,
+    MSG_INTR           = 0x08,
+    MSG_DISPLAY_BLANK  = 0x10,
+    MSG_VIDEO_BLANK    = 0x20,
 };
 
 /* dual mode instruction state */
@@ -618,7 +624,7 @@ private:
     void   dump_state ();
 	UINT32 disasm (UINT32 addr, int len);
     offs_t disasm(char* buffer, offs_t pc);
-	void   dbg_db (UINT32 addr, int len);
+	void   dbg_memdump (UINT32 addr, int len);
 	int    delay_slots(UINT32 insn);
 	UINT32 get_address_translation (UINT32 vaddr, int is_dataref, int is_write);
 	float  get_fval_from_optype_s (UINT32 insn, int optype);

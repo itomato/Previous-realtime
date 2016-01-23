@@ -20,6 +20,7 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+#include "host.h"
 #include "i860.hpp"
 
 static i860_cpu_device nd_i860;
@@ -53,13 +54,11 @@ extern "C" {
             // while spped-hack is on, slow down m68k a bit
             for(int i = 10; --i >= 0;)
                 checklock(&nd_i860.m_debugger_lock);
-        }
-        if(checklock_cnt <= 0) {
+        } if(checklock_cnt <= 0) {
             checklock(&nd_i860.m_debugger_lock);
             // optimzation: check the debugger lock only all 10000 cycles
             checklock_cnt = 10000;
-        }
-        else
+        } else
             checklock_cnt -= nHostCycles;
 #else
         nd_i860.handle_msgs();
@@ -85,7 +84,15 @@ extern "C" {
     void i860_reset() {
         nd_i860.send_msg(MSG_I860_RESET);
     }
-    
+
+    void nd_display_blank() {
+        nd_i860.send_msg(MSG_DISPLAY_BLANK);
+    }
+
+    void nd_video_blank() {
+        nd_i860.send_msg(MSG_VIDEO_BLANK);
+    }
+
     void i860_tick(bool intr) {
         nd_i860.tick(intr);
     }
@@ -551,12 +558,18 @@ bool i860_cpu_device::handle_msgs() {
     m_port = 0;
     unlock(&m_port_lock);
     
+#if ENABLE_I860_THREAD
     if(msg & MSG_I860_KILL)
         return false;
+#endif
     if(msg & MSG_I860_RESET)
         reset();
     else if(msg & MSG_INTR)
         intr();
+    if(msg & MSG_DISPLAY_BLANK)
+        nd_set_blank_state(ND_DISPLAY, host_nd_blank_state(ND_SLOT, ND_DISPLAY));
+    if(msg & MSG_VIDEO_BLANK)
+        nd_set_blank_state(ND_VIDEO, host_nd_blank_state(ND_SLOT, ND_VIDEO));
     if(msg & MSG_DBG_BREAK)
         debugger('d', "BREAK at pc=%08X", m_pc);
     return true;
@@ -572,7 +585,7 @@ void i860_cpu_device::run() {
         }
         
         /* Run some i860 cycles before re-checking messages*/
-        for(int i = 10; --i >= 0;)
+        for(int i = 16; --i >= 0;)
             run_cycle();
     }
 }
@@ -580,7 +593,7 @@ void i860_cpu_device::run() {
 void i860_cpu_device::tick(bool intr) {
     if(intr) send_msg(MSG_INTR);
 #if ENABLE_PERF_COUNTERS
-    UINT32 now = time_ms();
+    UINT32 now = host_time_ms();
     m_time_delta_ms += now - m_abs_time_ms;
     m_abs_time_ms = now;
     if(m_time_delta_ms > 5000)
@@ -605,6 +618,8 @@ void i860_cpu_device::dump_reset_perfc() {
                            );
                 Log_Printf(LOG_WARN, "[m68k] Stats: Mcycles/s=%lld.%lld",
                            (m_m68k_cylces / (dt * 100)) / 10, (m_insn_decoded / (dt * 100)) % 10);
+                
+                host_print_stat();
                 
                 m_m68k_cylces   = 0;
                 m_insn_decoded  = 0;

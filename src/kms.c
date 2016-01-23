@@ -68,14 +68,6 @@ struct {
  * ---x ---x ---- ---x ---- ---- ---- ----  zero bits
  */
 
-
-#define SNDOUT_DMA_ENABLE   0x80
-#define SNDOUT_DMA_REQUEST  0x40
-#define SNDOUT_DMA_UNDERRUN 0x20
-#define SNDIN_DMA_ENABLE    0x08
-#define SNDIN_DMA_REQUEST   0x04
-#define SNDIN_DMA_OVERRUN   0x02
-
 #define KBD_INT             0x80
 #define KBD_RECEIVED        0x40
 #define KBD_OVERRUN         0x20
@@ -255,6 +247,9 @@ void KMS_command(Uint8 command, Uint32 data) {
     }
 }
 
+void kms_snd_dma_or(Uint8 val) {
+    kms.status.snd_dma |= val;
+}
 
 void KMS_Ctrl_Snd_Write(void) {
     Uint8 val = IoMem[IoAccessCurrentAddress&IO_SEG_MASK];
@@ -475,6 +470,8 @@ void kms_mouse_button(bool left, bool down) {
     }
 }
 
+#define MOUSE_POLL_FREQ 100 // 100Hz
+
 void kms_mouse_move(int x, bool left, int y, bool up) {
     
     if (x<0 || y<0) {
@@ -494,7 +491,7 @@ void kms_mouse_move(int x, bool left, int y, bool up) {
     
     m_move_steps = 8;
     
-    CycInt_AddRelativeInterrupt(CYCLES_PER_FRAME/10, INT_CPU_CYCLE, INTERRUPT_MOUSE);
+    CycInt_AddRelativeInterruptUs((1000*1000)/MOUSE_POLL_FREQ, false, INTERRUPT_MOUSE);
 }
 
 void kms_mouse_move_step(void) {
@@ -544,6 +541,6 @@ void Mouse_Handler(void) {
     if (m_move_steps>0 && (m_move_x>0 || m_move_y>0)) {
         kms_mouse_move_step();
         
-        CycInt_AddRelativeInterrupt(CYCLES_PER_FRAME/10, INT_CPU_CYCLE, INTERRUPT_MOUSE);
+        CycInt_AddRelativeInterrupt((1000*1000)/MOUSE_POLL_FREQ, INTERRUPT_MOUSE);
     }
 }

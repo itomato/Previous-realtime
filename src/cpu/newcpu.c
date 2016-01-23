@@ -29,7 +29,6 @@
 #include "dimension.h"
 #include "reset.h"
 #include "cycInt.h"
-#include "mfp.h"
 #include "dialog.h"
 #include "screen.h"
 #include "video.h"
@@ -2107,9 +2106,9 @@ STATIC_INLINE int do_specialties (int cycles)
 
 	    /* It is possible one or more ints happen at the same time */
 	    /* We must process them during the same cpu cycle until the special INT flag is set */
-		while (PendingInterruptCount<=0 && PendingInterruptFunction) {
+		while (PendingInterrupt.time <=0 && PendingInterrupt.pFunction) {
 			/* 1st, we call the interrupt handler */
-			CALL_VAR(PendingInterruptFunction);
+			CALL_VAR(PendingInterrupt.pFunction);
 		
 			/* Then we check if this handler triggered an interrupt to process */
 			if ( do_specialties_interrupt(false) ) {	/* test if there's an interrupt and add non pending jitter */
@@ -2252,8 +2251,8 @@ static void m68k_run_1 (void)
 		/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
 		/* and prevent exiting the STOP state when calling do_specialties() after. */
 		/* For performance, we first test PendingInterruptCount, then regs.spcflags */
-		while ( ( PendingInterruptCount <= 0 ) && ( PendingInterruptFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
-			CALL_VAR(PendingInterruptFunction);		/* call the interrupt handler */
+		while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
+			CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
 			do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
 		}
 		
@@ -2516,8 +2515,8 @@ insretry:
 			/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
 			/* and prevent exiting the STOP state when calling do_specialties() after. */
 			/* For performance, we first test PendingInterruptCount, then regs.spcflags */
-			while ( ( PendingInterruptCount <= 0 ) && ( PendingInterruptFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
-				CALL_VAR(PendingInterruptFunction);		/* call the interrupt handler */
+			while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
+				CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
 				do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
 			}
 
@@ -2608,8 +2607,8 @@ static void m68k_run_mmu040 (void)
 			/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
 			/* and prevent exiting the STOP state when calling do_specialties() after. */
 			/* For performance, we first test PendingInterruptCount, then regs.spcflags */
-			while ( ( PendingInterruptCount <= 0 ) && ( PendingInterruptFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
-				CALL_VAR(PendingInterruptFunction);		/* call the interrupt handler */
+			while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
+				CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
 				do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
 			}
 
@@ -2749,8 +2748,8 @@ static void m68k_run_2p (void)
 		/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
 		/* and prevent exiting the STOP state when calling do_specialties() after. */
 		/* For performance, we first test PendingInterruptCount, then regs.spcflags */
-		while ( ( PendingInterruptCount <= 0 ) && ( PendingInterruptFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
-			CALL_VAR(PendingInterruptFunction);		/* call the interrupt handler */
+		while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
+			CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
 			do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
 		}
 		
@@ -2807,8 +2806,8 @@ static void m68k_run_2 (void)
 		/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
 		/* and prevent exiting the STOP state when calling do_specialties() after. */
 		/* For performance, we first test PendingInterruptCount, then regs.spcflags */
-		while ( ( PendingInterruptCount <= 0 ) && ( PendingInterruptFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
-			CALL_VAR(PendingInterruptFunction);		/* call the interrupt handler */
+		while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
+			CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
 			do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
 		}
 		
