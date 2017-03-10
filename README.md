@@ -15,7 +15,8 @@ Contents:
 
 <!-- -->
 
-#  License ----------
+#  License
+ ----------
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -31,7 +32,8 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
 
-#  About Previous -----------------
+#  About Previous 
+-----------------
 
 Previous is a NeXT Computer emulator based on the Atari emulator Hatari.
 It uses the latest m68k emulation core from WinUAE and the i860 emulator
@@ -43,7 +45,8 @@ Previous emulates the following machines: NeXT Computer (original 68030
 Cube) NeXTcube NeXTcube Turbo NeXTstation NeXTstation Turbo NeXTstation
 Color NeXTstation Turbo Color NeXTdimension Graphics Board
 
-#  Compiling and installing ---------------------------
+#  Compiling and installing 
+---------------------------
 
 For using Previous, you need to have installed the following libraries:
 
@@ -77,7 +80,8 @@ After cmake finished the configuration successfully, you can compile
 Previous by typing "make". If all works fine, you'll get the executable
 "Previous" in the src/ subdirectory of the build tree.
 
-#  Status ---------
+#  Status 
+---------
 
 Previous is still work in progress. Some hardware is not yet emulated:
 CPU good (but not cycle-exact) MMU good FPU good DSP good DMA good
@@ -89,7 +93,8 @@ good Mouse good ADB dummy Nitro dummy Dimension partial (no video I/O)
 There are remaining problems with the host to emulated machine interface
 for input devices.
 
-#  Known issues ---------------
+#  Known issues 
+---------------
 
 -   Un-emulated hardware may cause problems in certain situations
     (see above).
@@ -111,7 +116,8 @@ for input devices.
     in emulation. This is most likely caused by SDL or host audio
     hardware and drivers.
 
-#  Release notes ----------------
+#  Release notes 
+----------------
 
 Previous v1.0: 
 - Initial release.
@@ -168,7 +174,8 @@ NeXTstep 0.8.
 pausing. 
 - Improves dummy RAMDAC emulation.
 
-#  Running Previous -------------------
+#  Running Previous 
+-------------------
 
 For running the emulator, you need an image of the boot ROM of the
 emulated machine.
@@ -178,7 +185,8 @@ pressing F12, toggle between fullscreen and windowed mode by pressing
 F11 and initiate a clean shut down by pressing F10 (emulates the power
 button).
 
-#  Contributors ---------------
+#  Contributors 
+---------------
 
 Many thanks go to the members of the NeXT International Forums for their
 help. Special thanks go to Gavin Thomas Nicol, Piotr Twarecki, Toni
@@ -186,7 +194,8 @@ Wilen, Michael Bosshard, Thomas Huth, Olivier Galibert, Simon Schubiger,
 Jason Eckhardt, Jason Stevens, Vaughan Kaufman and Peter Leonard! This
 emulator would not exist without their help.
 
-#  Contact ----------
+#  Contact
+ ----------
 
 If you want to contact the authors of Previous, please have a look at
 the NeXT International Forums (http://www.nextcomputers.org/forums).
